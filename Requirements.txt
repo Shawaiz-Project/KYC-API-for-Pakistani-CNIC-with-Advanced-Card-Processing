@@ -1,0 +1,21 @@
+# Phase 1 runtime, tested together on CPython 3.11.9 (Windows x86-64).
+# EasyOCR leaves its inference stack open-ended, so those dependencies are
+# pinned here as well. CPU inference is the configured default.
+Django==5.2.17
+djangorestframework==3.16.1
+easyocr==1.7.2
+numpy==1.26.4
+torch==2.14.0
+torchvision==0.29.0
+scipy==1.17.1
+scikit-image==0.26.0
+python-bidi==0.6.11
+PyYAML==6.0.3
+Shapely==2.1.2
+pyclipper==1.4.0
+ninja==1.13.2
+onnxruntime==1.30.0
+opencv-python-headless==4.11.0.86
+Pillow==12.3.0
+psutil==7.2.2
+python-dotenv==1.2.3
