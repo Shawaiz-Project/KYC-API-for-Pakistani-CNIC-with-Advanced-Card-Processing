@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "dataset": {
+    "name": "replace-with-private-held-out-dataset-name",
+    "version": "replace-with-version",
+    "license": "replace-with-consent-and-license-reference",
+    "provenance": "Synthetic placeholder only; real documents must remain outside Git."
+  },
+  "detection_iou_threshold": 0.5,
+  "pairs": [
+    {
+      "person_group_id": "opaque-person-group-placeholder-001",
+      "document_group_id": "opaque-document-group-placeholder-001",
+      "split": "held_out",
+      "front_path": "../evaluation-data/DO_NOT_COMMIT/held-out/front-placeholder-001.jpg",
+      "back_path": "../evaluation-data/DO_NOT_COMMIT/held-out/back-placeholder-001.jpg",
+      "expected": {
+        "fields": {
+          "name": "SYNTHETIC EXAMPLE",
+          "guardian_name": "SYNTHETIC GUARDIAN",
+          "gender": "X",
+          "country_of_stay": "SYNTHETIC COUNTRY",
+          "cnic_number": "00000-0000000-0",
+          "date_of_birth": "2000-01-01",
+          "date_of_issue": "2020-01-01",
+          "date_of_expiry": "2030-01-01"
+        },
+        "urdu_text": {
+          "front": "مثالی متن",
+          "back": null
+        },
+        "card_boxes": {
+          "front": [[100, 80, 900, 580]],
+          "back": [[100, 80, 900, 580]]
+        }
+      }
+    },
+    {
+      "person_group_id": "opaque-person-group-placeholder-002",
+      "document_group_id": "opaque-document-group-placeholder-002",
+      "split": "train",
+      "front_path": "../evaluation-data/DO_NOT_COMMIT/train/front-placeholder-002.png",
+      "back_path": "../evaluation-data/DO_NOT_COMMIT/train/back-placeholder-002.png",
+      "expected": {
+        "fields": {
+          "cnic_number": "00000-0000000-0"
+        },
+        "urdu_text": {
+          "front": null,
+          "back": null
+        },
+        "card_boxes": {
+          "front": [[50, 50, 750, 490]],
+          "back": [[50, 50, 750, 490]]
+        }
+      }
+    }
+  ]
+}
