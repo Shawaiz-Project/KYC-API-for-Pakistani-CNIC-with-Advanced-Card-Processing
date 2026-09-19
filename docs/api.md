@@ -2,15 +2,16 @@
 
 All processing requests use `multipart/form-data`, require the configured API
 key header (default `X-API-Key`), and are throttled. Health endpoints are public.
-Responses echo a valid caller `X-Request-ID` (1–64 safe characters) or generate
-a UUID. The response header and body ID match.
+Responses echo a valid, non-CNIC-shaped caller `X-Request-ID` (1–64 safe
+characters) or generate a UUID. The response header and body ID match.
+Processing and readiness responses include `Cache-Control: no-store`.
 
 ## Endpoints
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/health/live` | no | Process liveness; never loads models. |
-| `GET` | `/health/ready` | no | Secrets/storage/model readiness; loads each configured model once per worker. |
+| `GET` | `/health/ready` | no | Sanitized secrets/storage/model readiness; loads each configured model once per worker without exposing weight manifests. |
 | `POST` | `/api/v1/kyc/process` | API key | Canonical structured Phase 1 contract. |
 | `POST` | `/api/v1/card/detector` | API key | Historical compatibility adapter, no trailing slash. |
 
@@ -22,9 +23,11 @@ The canonical request fields are:
 | `back` | yes | Actual JPEG, PNG, or WebP back capture. |
 | `template` | no | `auto` (default), `generic`, `smart`, `smart_card`, `nicop`, or `legacy_urdu`. |
 
-The configured byte, request, pixel, and dimension limits are applied before
-model inference. Declared MIME type and filename do not override decoded
-content.
+The configured byte, aggregate streaming request, file-count, form-field,
+pixel, and dimension limits are applied before model inference. Declared MIME
+type and filename do not override decoded content. Images must contain exactly
+one frame. PNG/WebP alpha is composited onto an opaque white background so
+hidden RGB pixels cannot create a card that was invisible to the submitter.
 
 ## Canonical successful processing response
 
@@ -152,8 +155,10 @@ This shortened synthetic response shows the shape:
   },
   "ocr": {
     "engine": "EasyOCR",
+    "status": "available",
     "raw_detections": {"front": [], "back": []},
-    "ordering": "top_to_bottom_with_per_line_unicode_direction"
+    "ordering": "top_to_bottom_with_per_line_unicode_direction",
+    "rotation_candidates_degrees": [180]
   },
   "validation": {
     "overall_status": "fail",
@@ -173,7 +178,7 @@ This shortened synthetic response shows the shape:
   "model_versions": {
     "card_boundary": {
       "name": "opencv-contour-baseline",
-      "version": "4.10.0.84",
+      "version": "4.11.0.86",
       "kind": "deterministic_heuristic"
     },
     "ocr": {
@@ -192,6 +197,10 @@ Every canonical field is present. `raw_value` preserves OCR evidence;
 `normalized_value` may normalize Unicode compatibility forms, Urdu/Persian
 digits, whitespace, CNIC hyphens, and unambiguous full dates. It is `null` when
 unreadable. It never contains inferred missing characters.
+
+When OCR is intentionally optional but cannot load, processing may still
+complete with `ocr.status: unavailable`; unreadable supported fields then add
+`availability: unavailable`, and dependent checks use the `unavailable` status.
 
 Bounding boxes are four pixel-coordinate `[x, y]` points in the perspective-
 corrected card image. Raw OCR/detector scores, contour area ratios, and side
@@ -236,7 +245,7 @@ Common status/code pairs:
 | 401 | `authentication_required`, `invalid_api_key`, `authentication_unavailable` |
 | 405 | `method_not_allowed` |
 | 413 | `request_too_large`, `upload_too_large`, `image_dimensions_exceeded`, `image_pixel_limit_exceeded` |
-| 415 | `unsupported_request_media_type`, `unsupported_image_format` |
+| 415 | `unsupported_request_media_type`, `unsupported_image_format`, `animated_image_not_supported` |
 | 422 | `image_decode_failed`, `card_not_found`, `multiple_cards_detected`, `incomplete_card`, `wrong_document_side`, `image_quality_insufficient` |
 | 429 | `rate_limited` |
 | 500 | `internal_error`, `processing_copy_failed` |

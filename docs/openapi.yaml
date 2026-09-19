@@ -1,0 +1,441 @@
+openapi: 3.0.3
+info:
+  title: Shanakht KYC API
+  version: 2.0.0
+  description: Tenant-scoped KYC orchestration. Local checks are not authoritative
+    identity verification.
+paths:
+  /api/v1/card/detector:
+    post:
+      operationId: api_v1_card_detector_create
+      description: Compatibility adapter for the original path, field names, and keys.
+      tags:
+      - api
+      security:
+      - legacyApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/kyc/process:
+    post:
+      operationId: api_v1_kyc_process_create
+      description: Structured Phase 1 processing contract.
+      tags:
+      - api
+      security:
+      - legacyApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/api-keys:
+    get:
+      operationId: api_v2_api_keys_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v2_api_keys_create
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/api-keys/{key_id}/actions:
+    post:
+      operationId: api_v2_api_keys_actions_create
+      parameters:
+      - in: path
+        name: key_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications:
+    get:
+      operationId: v2_application_list
+      summary: List organization-scoped KYC applications
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v2_applications_create
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}:
+    get:
+      operationId: v2_application_retrieve
+      summary: Retrieve one authorized application with evidence
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/artifacts:
+    post:
+      operationId: api_v2_applications_artifacts_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/assignment:
+    post:
+      operationId: api_v2_applications_assignment_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/consent:
+    post:
+      operationId: api_v2_applications_consent_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/corrections:
+    post:
+      operationId: api_v2_applications_corrections_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/decisions:
+    post:
+      operationId: api_v2_applications_decisions_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/liveness-sessions:
+    post:
+      operationId: api_v2_applications_liveness_sessions_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/{id}/submit:
+    post:
+      operationId: api_v2_applications_submit_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/batch:
+    post:
+      operationId: api_v2_applications_batch_create
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/applications/export.csv:
+    get:
+      operationId: api_v2_applications_export.csv_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/auth/csrf:
+    get:
+      operationId: api_v2_auth_csrf_retrieve
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v2/auth/me:
+    get:
+      operationId: api_v2_auth_me_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/auth/sign-in:
+    post:
+      operationId: api_v2_auth_sign_in_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v2/auth/sign-out:
+    post:
+      operationId: api_v2_auth_sign_out_create
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/liveness-sessions/{session_id}/captures:
+    post:
+      operationId: api_v2_liveness_sessions_captures_create
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/liveness-sessions/{session_id}/complete:
+    post:
+      operationId: api_v2_liveness_sessions_complete_create
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/media/{artifact_id}:
+    get:
+      operationId: api_v2_media_retrieve
+      parameters:
+      - in: path
+        name: artifact_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/metrics:
+    get:
+      operationId: api_v2_metrics_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/overview:
+    get:
+      operationId: api_v2_overview_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/webhooks:
+    get:
+      operationId: api_v2_webhooks_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v2_webhooks_create
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /api/v2/webhooks/{endpoint_id}/deliveries:
+    get:
+      operationId: api_v2_webhooks_deliveries_retrieve
+      parameters:
+      - in: path
+        name: endpoint_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - organizationApiKey: []
+      responses:
+        '200':
+          description: No response body
+  /health/live:
+    get:
+      operationId: health_live_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /health/ready:
+    get:
+      operationId: health_ready_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    legacyApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    organizationApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key

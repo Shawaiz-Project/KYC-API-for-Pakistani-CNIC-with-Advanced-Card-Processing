@@ -1,6 +1,6 @@
 # Phase 1 baseline results
 
-Baseline record date: 2026-09-14  
+Baseline record date: 2026-09-19
 Result state: **blocked / not run**
 
 No accuracy or production performance value can be reported from the supplied
@@ -26,6 +26,11 @@ These statuses are not zero scores. They mean the measurement prerequisites are
 absent. Unit tests and a synthetic smoke request validate behavior, not model
 accuracy or production performance.
 
+The checked-in aggregate dry-run result is
+[`../benchmarks/phase1-example-result.json`](../benchmarks/phase1-example-result.json).
+It validates the reporting path and records the exact missing front/back asset
+blockers without attempting inference.
+
 ## Audited machine context
 
 - OS: Windows x64
@@ -46,13 +51,13 @@ not substituted for a held-out accuracy or latency benchmark.
    license/provenance, class map, and SHA-256.
 3. Create an external manifest based on `benchmarks/manifest.example.json`.
 4. Include opaque person/document grouping IDs and ensure neither group crosses
-   train/validation/test splits.
+   `train`/`validation`/`held_out` splits.
 5. Supply expected normalized fields, Urdu transcription, and card geometry for
    every evaluated side.
 6. Run:
 
    ```powershell
-   python main.py benchmark_kyc --manifest D:\private-evaluation\manifest.json --split test --output D:\private-evaluation\phase1.json
+   python main.py benchmark_kyc --manifest D:\private-evaluation\manifest.json --split held_out --output D:\private-evaluation\phase1.json
    ```
 
 7. Review the emitted blockers. Only publish metrics when their status is

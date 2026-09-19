@@ -1,5 +1,13 @@
 # Current-state audit
 
+> Phase 2/3 update (2026-09-19): the historical findings below describe the
+> audited starting point. The repository now also contains the implementation
+> summarized in `phase-2-completion.md` and `phase-3-completion.md`. Required
+> external assets remain absent: EasyOCR weights, the original custom CNIC
+> detector, YuNet/SFace files and approved provenance, a landmark/anti-spoof
+> package, consented grouped evaluation/attack data, PostgreSQL/Redis runtime,
+> object-store/provider credentials, and public deployment/TLS approval.
+
 Audit date: 2026-09-14  
 Scope: the workspace as supplied, before Phase 1 changes
 

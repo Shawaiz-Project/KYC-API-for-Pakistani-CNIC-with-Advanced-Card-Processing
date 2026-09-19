@@ -1,0 +1,8 @@
+{
+  "blockers": [
+    "evaluation_manifest_missing:evaluation-data\\phase2-results.csv",
+    "consented_representative_evaluation_data_missing",
+    "face_and_anti_spoof_model_weights_missing"
+  ],
+  "status": "not_run"
+}

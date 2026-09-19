@@ -1,0 +1,94 @@
+{
+  "blockers": [
+    {
+      "code": "front_assets_missing",
+      "details": {
+        "count": 1,
+        "pair_indices": [
+          0
+        ]
+      },
+      "message": "One or more front evaluation assets are absent."
+    },
+    {
+      "code": "back_assets_missing",
+      "details": {
+        "count": 1,
+        "pair_indices": [
+          0
+        ]
+      },
+      "message": "One or more back evaluation assets are absent."
+    }
+  ],
+  "comparison": {
+    "reason": "benchmark_not_complete",
+    "regressions": [],
+    "status": "unavailable"
+  },
+  "configuration": {
+    "detection_iou_threshold": 0.5,
+    "pipeline": "detector.pipeline.process_pair",
+    "warm_latency": true
+  },
+  "dataset": {
+    "evaluated_split": "held_out",
+    "license": "replace-with-consent-and-license-reference",
+    "manifest_sha256": "33e784e49990f467e2857f16efad4e9fa439610395edc469d6724d5cd13f54c8",
+    "name": "replace-with-private-held-out-dataset-name",
+    "pair_count": 1,
+    "provenance": "Synthetic placeholder only; real documents must remain outside Git.",
+    "version": "replace-with-version"
+  },
+  "environment": {
+    "configured_device": "cpu",
+    "cpu_count": 4,
+    "implementation": "CPython",
+    "machine": "AMD64",
+    "operating_system": "Windows",
+    "packages": {
+      "Django": "5.2.17",
+      "Pillow": "12.3.0",
+      "djangorestframework": "3.16.1",
+      "easyocr": "1.7.2",
+      "numpy": "1.26.4",
+      "onnxruntime": "1.30.0",
+      "opencv-python-headless": "4.11.0.86",
+      "psutil": "7.2.2"
+    },
+    "python": "3.11.9",
+    "release": "10"
+  },
+  "generated_at": "2026-09-19T10:29:18.715767+00:00",
+  "metrics": {
+    "card_detection": {
+      "reason": "evaluation_assets_unavailable",
+      "status": "not_run"
+    },
+    "field_exact_match": {
+      "reason": "evaluation_assets_unavailable",
+      "status": "not_run"
+    },
+    "latency": {
+      "reason": "evaluation_assets_unavailable",
+      "status": "not_run"
+    },
+    "memory": {
+      "reason": "evaluation_assets_unavailable",
+      "status": "not_run"
+    },
+    "urdu_cer": {
+      "reason": "evaluation_assets_unavailable",
+      "status": "not_run"
+    }
+  },
+  "models": {},
+  "processing": {
+    "attempted_pairs": 0,
+    "error_codes": {},
+    "failed_pairs": 0,
+    "successful_pairs": 0
+  },
+  "schema_version": "1.0",
+  "status": "not_run"
+}
