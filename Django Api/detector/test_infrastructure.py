@@ -11,9 +11,10 @@ import threading
 import time
 from types import ModuleType, SimpleNamespace
 import uuid
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.core.management import call_command
+from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from rest_framework.exceptions import AuthenticationFailed
@@ -22,6 +23,10 @@ from rest_framework.test import APIRequestFactory
 from detector.authentication import APIKeyAuthentication
 from detector.middleware import RequestIDMiddleware
 from detector.model_registry import ModelRegistry, ModelUnavailableError, sha256_file
+from detector.upload_handlers import TotalUploadLimitHandler
+
+
+VALID_API_KEY = "operator-secret-key-0000000001"
 
 
 class RequestIDMiddlewareTests(SimpleTestCase):
@@ -51,25 +56,34 @@ class RequestIDMiddlewareTests(SimpleTestCase):
         self.assertNotIn("\r", response["X-Request-ID"])
         self.assertNotIn("\n", response["X-Request-ID"])
 
+    def test_replaces_cnic_shaped_request_id_so_it_cannot_reach_logs(self):
+        supplied = "12345-1234567-1"
+        request = self.factory.get("/health", HTTP_X_REQUEST_ID=supplied)
+        response = RequestIDMiddleware(lambda _: HttpResponse(status=204))(request)
+
+        uuid.UUID(response["X-Request-ID"])
+        self.assertNotEqual(response["X-Request-ID"], supplied)
+        self.assertNotEqual(request.request_id, supplied)
+
 
 class APIKeyAuthenticationTests(SimpleTestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
         self.authenticator = APIKeyAuthentication()
 
-    @override_settings(KYC_API_KEYS=("operator-secret",), KYC_API_KEY_HEADER="X-API-Key")
+    @override_settings(KYC_API_KEYS=(VALID_API_KEY,), KYC_API_KEY_HEADER="X-API-Key")
     def test_configured_key_returns_only_a_non_reversible_principal(self):
-        request = self.factory.get("/", HTTP_X_API_KEY="operator-secret")
+        request = self.factory.get("/", HTTP_X_API_KEY=VALID_API_KEY)
 
         principal, auth = self.authenticator.authenticate(request)
 
         self.assertIsNone(auth)
         self.assertTrue(principal.is_authenticated)
         self.assertEqual(principal.username, "api-key")
-        self.assertEqual(principal.pk, hashlib.sha256(b"operator-secret").hexdigest())
-        self.assertNotIn("operator-secret", repr(principal))
+        self.assertEqual(principal.pk, hashlib.sha256(VALID_API_KEY.encode()).hexdigest())
+        self.assertNotIn(VALID_API_KEY, repr(principal))
 
-    @override_settings(KYC_API_KEYS=("operator-secret",), KYC_API_KEY_HEADER="X-API-Key")
+    @override_settings(KYC_API_KEYS=(VALID_API_KEY,), KYC_API_KEY_HEADER="X-API-Key")
     def test_missing_header_defers_to_permission_handling(self):
         request = self.factory.get("/")
         self.assertIsNone(self.authenticator.authenticate(request))
@@ -86,7 +100,7 @@ class APIKeyAuthenticationTests(SimpleTestCase):
         self.assertNotIn(supplied, rendered)
         self.assertIn("authentication_unavailable", rendered)
 
-    @override_settings(KYC_API_KEYS=("configured-secret",), KYC_API_KEY_HEADER="X-API-Key")
+    @override_settings(KYC_API_KEYS=(VALID_API_KEY,), KYC_API_KEY_HEADER="X-API-Key")
     def test_invalid_key_fails_without_leaking_supplied_or_configured_key(self):
         supplied = "incorrect-secret"
         request = self.factory.get("/", HTTP_X_API_KEY=supplied)
@@ -96,11 +110,78 @@ class APIKeyAuthenticationTests(SimpleTestCase):
 
         rendered = f"{raised.exception!s} {raised.exception!r} {raised.exception.detail!r}"
         self.assertNotIn(supplied, rendered)
-        self.assertNotIn("configured-secret", rendered)
+        self.assertNotIn(VALID_API_KEY, rendered)
         self.assertIn("invalid_api_key", rendered)
+
+    @override_settings(
+        KYC_API_KEYS=("replace-with-a-random-api-key",),
+        KYC_API_KEY_HEADER="X-API-Key",
+    )
+    def test_example_placeholder_key_is_never_accepted(self):
+        request = self.factory.get(
+            "/", HTTP_X_API_KEY="replace-with-a-random-api-key"
+        )
+
+        with self.assertRaises(AuthenticationFailed) as raised:
+            self.authenticator.authenticate(request)
+
+        self.assertIn("authentication_unavailable", str(raised.exception.detail))
+
+
+class StreamingUploadLimitTests(SimpleTestCase):
+    @override_settings(KYC_MAX_REQUEST_BYTES=5)
+    def test_aggregate_file_chunks_are_capped_without_content_length(self):
+        handler = TotalUploadLimitHandler()
+        self.assertEqual(handler.receive_data_chunk(b"123", 0), b"123")
+        with self.assertRaises(RequestDataTooBig):
+            handler.receive_data_chunk(b"456", 3)
 
 
 class ModelRegistryTests(SimpleTestCase):
+    @override_settings(
+        KYC_OCR_REQUIRED=False,
+        KYC_OCR_ROTATION_INFO=(180,),
+    )
+    def test_optional_unavailable_ocr_degrades_to_empty_results(self):
+        registry = ModelRegistry()
+        registry._ocr_error = ModelUnavailableError("OCR", "weights_missing_or_invalid")
+
+        self.assertEqual(registry.run_ocr(object()), [])
+
+    @override_settings(KYC_OCR_ROTATION_INFO=(180,))
+    def test_ocr_checks_upside_down_text_without_reloading_reader(self):
+        registry = ModelRegistry()
+        reader = Mock()
+        reader.readtext.return_value = []
+        registry._ocr_reader = reader
+        image = object()
+
+        registry.run_ocr(image)
+
+        reader.readtext.assert_called_once_with(
+            image,
+            detail=1,
+            paragraph=False,
+            rotation_info=[180],
+        )
+
+    @override_settings(
+        SECRET_KEY="replace-with-a-long-random-value",
+        KYC_API_KEYS=("replace-with-a-random-api-key",),
+        KYC_OCR_ENABLED=False,
+        KYC_OCR_REQUIRED=False,
+    )
+    def test_readiness_rejects_example_credentials(self):
+        with tempfile.TemporaryDirectory() as directory, override_settings(
+            KYC_PRIVATE_STORAGE_ROOT=Path(directory) / "private"
+        ):
+            result = ModelRegistry().readiness(load_models=False)
+
+        checks = {item["name"]: item for item in result["checks"]}
+        self.assertEqual(checks["secret_key"]["status"], "fail")
+        self.assertEqual(checks["api_authentication"]["status"], "fail")
+        self.assertFalse(result["ready"])
+
     @override_settings(KYC_DEVICE="cpu")
     def test_cpu_device_forces_cpu_onnx_provider(self):
         fake_onnxruntime = SimpleNamespace(

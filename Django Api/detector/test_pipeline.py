@@ -240,6 +240,47 @@ class FullPipelineContractTests(PipelineHarness):
         # encoders, NumPy objects, image bytes, or storage paths.
         json.dumps(result)
 
+    def test_unlabeled_front_cnic_still_detects_back_qr_mismatch(self):
+        result = self._run_pipeline(
+            front_ocr=[_ocr_item("11111-1111111-1", 10)],
+            back_side=_side_result("back", qr_cnic="00000-0000000-0"),
+        )
+
+        check = result["validation"]["checks"]["side_consistency"]
+        self.assertEqual(check["status"], "fail")
+        self.assertEqual(check["code"], "cnic_sides_mismatch")
+        self.assertEqual(
+            {item["side"] for item in result["field_evidence"]["cnic_number"]},
+            {"front", "back"},
+        )
+
+    def test_optional_unavailable_ocr_is_a_degraded_response_not_503(self):
+        registry = Mock()
+        registry.get_card_detector.return_value = None
+        registry.versions.return_value = {
+            "card_boundary": {"name": "opencv-contour-baseline", "version": "test"},
+            "ocr": {"name": "EasyOCR", "status": "unavailable", "reason": "weights_missing"},
+        }
+
+        result = self._run_pipeline(
+            registry=registry,
+            front_ocr=[],
+            back_ocr=[],
+            back_side=_side_result("back", qr_cnic=None),
+        )
+
+        self.assertTrue(result["processing"]["success"])
+        self.assertEqual(result["ocr"]["status"], "unavailable")
+        self.assertEqual(result["validation"]["overall_status"], "unavailable")
+        self.assertEqual(
+            result["validation"]["checks"]["required_fields"]["status"],
+            "unavailable",
+        )
+        self.assertEqual(
+            result["extracted_fields"]["cnic_number"]["availability"],
+            "unavailable",
+        )
+
     def test_processing_success_is_separate_from_fail_and_uncertain_verification(self):
         failed = self._run_pipeline(front_ocr=_valid_front_ocr(expiry="01.01.2020"))
         self.assertTrue(failed["processing"]["success"])

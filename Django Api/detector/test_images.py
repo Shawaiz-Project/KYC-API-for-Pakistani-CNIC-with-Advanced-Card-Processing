@@ -173,6 +173,38 @@ class UploadValidationTests(SimpleTestCase):
         self.assertEqual(raised.exception.http_status, 422)
         self.assertEqual(raised.exception.details["decoder"], "opencv")
 
+    def test_transparent_pixels_are_composited_before_processing(self):
+        hidden_card = cv2.cvtColor(_single_card_canvas(), cv2.COLOR_BGR2RGBA)
+        hidden_card[:, :, 3] = 0
+        image = Image.fromarray(hidden_card, mode="RGBA")
+        output = BytesIO()
+        image.save(output, format="PNG")
+        upload = SimpleUploadedFile("transparent.png", output.getvalue())
+
+        validated = validate_upload(upload, "front")
+
+        self.assertTrue(validated.transparency_composited)
+        self.assertTrue(np.all(validated.image == 255))
+
+    def test_multiframe_png_is_rejected_explicitly(self):
+        first = Image.new("RGB", (80, 50), (10, 20, 30))
+        second = Image.new("RGB", (80, 50), (40, 50, 60))
+        output = BytesIO()
+        first.save(
+            output,
+            format="PNG",
+            save_all=True,
+            append_images=[second],
+            duration=100,
+            loop=0,
+        )
+
+        with self.assertRaises(KYCError) as raised:
+            validate_upload(SimpleUploadedFile("animated.png", output.getvalue()), "front")
+
+        self.assertEqual(raised.exception.http_status, 415)
+        self.assertEqual(raised.exception.code, "animated_image_not_supported")
+
     @override_settings(KYC_MAX_IMAGE_DIMENSION=100, KYC_MAX_IMAGE_PIXELS=100_000)
     def test_dimension_limit_reports_413(self):
         upload = _pillow_upload((101, 20), "PNG", name="wide.png")

@@ -16,7 +16,7 @@ PROCESS_URL = "/api/v1/kyc/process"
 LEGACY_URL = "/api/v1/card/detector"
 LIVE_URL = "/health/live"
 READY_URL = "/health/ready"
-API_KEY = "phase-one-test-key"
+API_KEY = "phase-one-test-key-0000000001"
 
 
 def _image_bytes(image_format: str = "PNG") -> bytes:
@@ -117,10 +117,11 @@ class HealthAndAuthenticationTests(APISimpleTestCase):
         registry = Mock()
         registry.readiness.return_value = {
             "ready": False,
-            "components": {
-                "ocr": {"status": "unavailable", "reason": "weights_missing"},
-                "card_detector": {"status": "not_run"},
-            },
+            "checks": [
+                {"name": "ocr", "status": "fail", "reason": "weights_missing"},
+                {"name": "card_detector", "status": "pass", "reason": "baseline"},
+            ],
+            "models": {"ocr": {"weights": [{"sha256": "private-fingerprint"}]}},
         }
         with patch("detector.views.get_model_registry", return_value=registry):
             response = self.client.get(READY_URL, HTTP_X_REQUEST_ID="ready-check-01")
@@ -130,6 +131,8 @@ class HealthAndAuthenticationTests(APISimpleTestCase):
         self.assertEqual(response.json()["request_id"], "ready-check-01")
         self.assertEqual(response.json()["status"], "not_ready")
         self.assertFalse(response.json()["ready"])
+        self.assertNotIn("models", response.json())
+        self.assertEqual(response["Cache-Control"], "no-store")
         registry.readiness.assert_called_once_with(load_models=True)
 
     def test_processing_requires_an_api_key(self):
@@ -140,6 +143,7 @@ class HealthAndAuthenticationTests(APISimpleTestCase):
         self.assertEqual(response.json()["error"]["code"], "authentication_required")
         self.assertIsNotNone(response.json()["request_id"])
         self.assertEqual(response["X-Request-ID"], response.json()["request_id"])
+        self.assertEqual(response["Cache-Control"], "no-store")
         process_pair.assert_not_called()
 
     def test_missing_sides_are_a_structured_400(self):
@@ -241,6 +245,8 @@ class CanonicalContractTests(APISimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["X-Request-ID"], "canonical-01")
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertEqual(response["Pragma"], "no-cache")
         body = response.json()
         self.assertEqual(body["request_id"], "canonical-01")
         self.assertEqual(body["api_version"], "v1")
