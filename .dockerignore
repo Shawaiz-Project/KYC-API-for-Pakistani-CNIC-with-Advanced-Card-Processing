@@ -1,0 +1,13 @@
+.git
+.venv*
+frontend/node_modules
+frontend/dist
+var
+Dataset
+evaluation-data
+private-data
+*.onnx
+*.pt
+*.pth
+*.sqlite3
+.env

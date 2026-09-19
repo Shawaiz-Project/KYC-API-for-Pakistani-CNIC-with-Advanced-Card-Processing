@@ -1,0 +1,31 @@
+.env
+.venv*/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+var/
+media/
+*.sqlite3-journal
+
+# Legacy runtime outputs and identity-document samples found during the audit.
+# They remain in the user's workspace but must not be added to source control.
+Dataset/
+Card Detected.JPG
+Detected Face.JPG
+Detected Text.JPG
+Django Api/IdCardData.csv
+Django Api/db.sqlite3
+
+# Identity documents and model weights must be supplied out of band.
+*.onnx
+*.pt
+*.pth
+private-data/
+evaluation-data/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+openapi.yml
