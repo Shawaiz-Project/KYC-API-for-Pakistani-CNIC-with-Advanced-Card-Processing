@@ -131,6 +131,20 @@ class UploadValidationTests(SimpleTestCase):
                 self.assertEqual(validated.image.shape, (50, 80, 3))
                 self.assertFalse(np.shares_memory(validated.image, np.frombuffer(expected_bytes, dtype=np.uint8)))
 
+    def test_validate_upload_accepts_selfie_slot(self):
+        upload = _pillow_upload((60, 60), "JPEG", name="selfie.jpg")
+        validated = validate_upload(upload, "selfie")
+        self.assertEqual(validated.side, "selfie")
+        self.assertEqual(validated.width, 60)
+        self.assertEqual(validated.height, 60)
+
+    def test_invalid_document_side_rejected(self):
+        upload = _pillow_upload((60, 60), "JPEG", name="test.jpg")
+        with self.assertRaises(KYCError) as raised:
+            validate_upload(upload, "invalid_side")
+        self.assertEqual(raised.exception.http_status, 400)
+        self.assertEqual(raised.exception.code, "invalid_document_side")
+
     def test_missing_and_empty_uploads_are_bad_requests(self):
         for upload, expected_code in (
             (None, "missing_upload"),
