@@ -44,6 +44,8 @@ class RequestIDMiddleware:
                 status=413,
             )
             response["X-Request-ID"] = request.request_id
+            response["Cache-Control"] = "no-store"
+            response["Pragma"] = "no-cache"
             return response
         response = self.get_response(request)
         response["X-Request-ID"] = request.request_id
