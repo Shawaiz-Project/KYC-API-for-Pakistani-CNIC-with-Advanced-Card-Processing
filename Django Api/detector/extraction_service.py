@@ -26,9 +26,17 @@ def auto_extract_and_store(
 ) -> dict[str, Any]:
     """Auto-detect all CNIC details from an uploaded artifact and persist to database.
 
-    Extracts fields from the current image, merges with existing artifacts
-    if the other side is already uploaded, and creates/updates ExtractionRevision
-    records in the database.
+    Args:
+        application: The KYCApplication model instance receiving the artifact.
+        kind: The artifact slot ('front' or 'back'). Non-card artifacts return an empty dict.
+        validated: Decoded and verified ValidatedImage instance containing card pixels.
+        template: Template layout to use for field parsing (defaults to 'generic').
+
+    Returns:
+        A dictionary mapping field names to their raw and normalized extracted values.
+
+    Side effects:
+        Creates or updates ExtractionRevision records with Source.MACHINE in the database.
     """
     if kind not in {"front", "back"}:
         return {}
