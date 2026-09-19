@@ -23,6 +23,17 @@ CONTENT_TYPES = {
 
 
 def save_artifact(application, kind: str, upload, request_id: str = "") -> tuple[DocumentArtifact, ValidatedImage, list[dict]]:
+    """Validate, digest, deduplicate, and persist a private document artifact.
+
+    Args:
+        application: KYCApplication instance receiving the artifact.
+        kind: Document kind ('front', 'back', 'selfie').
+        upload: Raw uploaded file-like object.
+        request_id: Traceable request ID for audit logging.
+
+    Returns:
+        A 3-tuple of (DocumentArtifact, ValidatedImage, duplicate_signals_list).
+    """
     validated = validate_upload(upload, kind)
     digest = hashlib.sha256(validated.original_bytes).hexdigest()
     dhash = perceptual_dhash(validated.bgr_image)
