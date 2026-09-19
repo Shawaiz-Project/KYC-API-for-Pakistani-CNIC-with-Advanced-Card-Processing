@@ -1,4 +1,4 @@
-MIT License
+# MIT License
 
 Copyright (c) 2026 Shawaiz Ali
 
@@ -19,3 +19,36 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Additional Project Notice
+
+This project is developed and maintained by **Shawaiz Ali**.
+
+You are free to use, study, modify, distribute, and commercially use this
+software under the terms of the MIT License above.
+
+If you redistribute this software or substantial portions of it, please
+preserve the original copyright and license notices.
+
+Where reasonably possible, attribution to the original project and author is
+appreciated, but attribution beyond the requirements of the MIT License is
+not mandatory.
+
+### Third-Party Components
+
+This project may include, depend on, or interact with third-party libraries,
+frameworks, APIs, datasets, fonts, icons, images, or other resources that are
+subject to their own licenses and terms.
+
+The MIT License applies only to the original work covered by this repository
+and does not automatically grant rights to third-party materials.
+
+Users and redistributors are responsible for reviewing and complying with
+the applicable licenses and terms for third-party components.
+
+### No Trademark Grant
+
+Nothing in this license grants permission to use the project's name, logo,
+branding, trademarks, service marks, or other identifying assets for
+endorsement, sponsorship, or affiliation without separate permission from
+the respective rights holder.
