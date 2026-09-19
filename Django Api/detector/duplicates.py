@@ -10,6 +10,11 @@ from .models import DuplicateFingerprint
 
 
 def perceptual_dhash(image) -> str:
+    """Compute an 8-byte difference hash (dHash) of an image for perceptual similarity checks.
+
+    Converts image to grayscale, scales to 9x8, and computes horizontal gradients
+    to yield a robust 64-bit fingerprint unaffected by slight resizing or compression.
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     resized = cv2.resize(gray, (9, 8), interpolation=cv2.INTER_AREA)
     bits = resized[:, 1:] > resized[:, :-1]
@@ -18,12 +23,17 @@ def perceptual_dhash(image) -> str:
 
 
 def identifier_hmac(normalized_identifier: str) -> str | None:
+    """Compute a blind HMAC digest for sensitive national identity numbers.
+
+    Allows duplicate identity lookup across applications without storing plaintext CNIC in indexes.
+    """
     if not settings.KYC_IDENTIFIER_HMAC_KEY:
         return None
     return hmac.new(settings.KYC_IDENTIFIER_HMAC_KEY.encode(), normalized_identifier.encode(), hashlib.sha256).hexdigest()
 
 
 def find_duplicate_signals(organization, application, sha256: str, dhash: str, identifier_digest: str | None = None) -> list[dict]:
+    """Scan existing organization fingerprints for identical files, similar images, or duplicate CNICs."""
     prior = DuplicateFingerprint.objects.filter(organization=organization).exclude(application=application)
     signals = []
     if sha256:
