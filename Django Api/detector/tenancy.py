@@ -6,6 +6,7 @@ from .models import Membership, Organization
 
 
 def request_organization(request) -> Organization:
+    """Resolve the active tenant organization for the authenticated principal or API key."""
     principal = request.user
     organization_id = getattr(principal, "organization_id", None)
     if organization_id:
@@ -23,6 +24,7 @@ def request_organization(request) -> Organization:
 
 
 def request_membership(request, organization: Organization | None = None) -> Membership | None:
+    """Retrieve active organization membership record for a human user."""
     if not getattr(request.user, "pk", None) or hasattr(request.user, "scopes"):
         return None
     organization = organization or request_organization(request)
@@ -30,6 +32,7 @@ def request_membership(request, organization: Organization | None = None) -> Mem
 
 
 def require_role(request, *roles: str) -> Membership:
+    """Enforce that the requesting user possesses one of the allowed organizational roles."""
     membership = request_membership(request)
     if membership is None or membership.role not in roles:
         raise PermissionDenied("The active organization role does not permit this action.")
@@ -37,6 +40,7 @@ def require_role(request, *roles: str) -> Membership:
 
 
 def require_scope(request, scope: str) -> None:
+    """Enforce that the caller API key includes the required authorization scope."""
     scopes = getattr(request.user, "scopes", None)
     if scopes is not None and scope not in scopes and "*" not in scopes:
         raise PermissionDenied("The API key does not include the required scope.")
