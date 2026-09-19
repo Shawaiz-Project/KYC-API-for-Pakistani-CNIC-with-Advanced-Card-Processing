@@ -345,3 +345,33 @@ class LegacyCompatibilityTests(APISimpleTestCase):
             response.json(),
             {"error": "FRONT SIDE & BACK SIDE OF THE CARD ARE NOT SAME"},
         )
+
+
+class CNICAutoDetectEndpointTests(APISimpleTestCase):
+    def test_missing_upload_returns_400(self):
+        response = self.client.post("/api/v2/cnic/detect", {})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"]["code"], "missing_upload")
+
+    def test_successful_detect_returns_201_with_application(self):
+        fake_result = {
+            "application_id": "00000000-0000-0000-0000-000000000001",
+            "display_id": "APP-00000000",
+            "artifact_id": "1",
+            "detected_side": "front",
+            "extracted_fields": {
+                "name": {"raw_value": "Ali", "normalized_value": "Ali", "source": "machine"},
+                "cnic_number": {"raw_value": "35201-1234567-1", "normalized_value": "35201-1234567-1", "source": "machine"},
+            },
+            "raw_ocr_count": 5,
+        }
+        with patch("detector.extraction_service.detect_and_store_single_image", return_value=fake_result):
+            response = self.client.post(
+                "/api/v2/cnic/detect",
+                {"file": _upload(name="card.png")},
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["display_id"], "APP-00000000")
+        self.assertIn("cnic_number", data["extracted_fields"])
