@@ -1,0 +1,58 @@
+# Dockerfile.hf — Hugging Face Spaces single-container deployment
+# Single process: gunicorn serves both the Django API and the pre-built React frontend.
+# Uses SQLite (no PostgreSQL) and eager Celery tasks (no Redis) for HF Spaces compat.
+# Port: 7860 (required by Hugging Face Spaces).
+
+FROM python:3.11.9-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DJANGO_SETTINGS_MODULE=api.settings \
+    KYC_DATABASE_ENGINE=sqlite \
+    KYC_SQLITE_PATH=/data/shanakht.sqlite3 \
+    KYC_PRIVATE_STORAGE_ROOT=/data/private-kyc \
+    KYC_OBJECT_STORAGE_ROOT=/data/private-objects \
+    KYC_OCR_MODEL_DIR=/data/models/easyocr \
+    KYC_TASK_ALWAYS_EAGER=true \
+    KYC_DEBUG=false \
+    KYC_DEVICE=cpu \
+    KYC_OCR_DOWNLOAD_ENABLED=true \
+    PORT=7860
+
+# System libraries required by OpenCV and EasyOCR
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 libgl1 libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY Requirements.txt ./
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r Requirements.txt
+
+# Copy Django backend
+COPY ["Django Api", "/app/Django Api"]
+
+# Copy the pre-built React frontend.
+# Run `npm run build` in /frontend before pushing to HF.
+COPY ["frontend/dist", "/app/Django Api/staticfiles_src/frontend"]
+
+WORKDIR "/app/Django Api"
+
+# Collect static files (Django admin + WhiteNoise + React)
+RUN KYC_SECRET_KEY=build-only-placeholder python manage.py collectstatic --noinput
+
+# Create data directories; HF Spaces runs as UID 1000
+RUN mkdir -p /data/private-kyc /data/private-objects /data/models/easyocr && \
+    chown -R 1000:1000 /data /app
+
+COPY hf_startup.sh /app/hf_startup.sh
+RUN chmod +x /app/hf_startup.sh && chown 1000:1000 /app/hf_startup.sh
+
+USER 1000
+
+EXPOSE 7860
+
+CMD ["/app/hf_startup.sh"]

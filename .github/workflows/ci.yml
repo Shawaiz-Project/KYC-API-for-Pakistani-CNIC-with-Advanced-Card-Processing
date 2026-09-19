@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11.9', cache: pip}
+      - run: python -m pip install -r Requirements.txt
+      - run: python "Django Api/manage.py" check
+        env: {KYC_SECRET_KEY: ci-only-not-for-production}
+      - run: python "Django Api/manage.py" test detector --verbosity 1
+        env: {KYC_SECRET_KEY: ci-only-not-for-production}
+      - run: python "Django Api/manage.py" spectacular --file openapi.yml --validate
+        env: {KYC_SECRET_KEY: ci-only-not-for-production}
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: frontend}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22.22.0', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build

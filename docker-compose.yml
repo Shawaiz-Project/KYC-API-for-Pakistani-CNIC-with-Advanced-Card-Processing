@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    environment:
+      POSTGRES_DB: ${KYC_DATABASE_NAME:-shanakht}
+      POSTGRES_USER: ${KYC_DATABASE_USER:-shanakht}
+      POSTGRES_PASSWORD: ${KYC_DATABASE_PASSWORD:?set KYC_DATABASE_PASSWORD}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"], interval: 10s, timeout: 5s, retries: 10}
+  redis:
+    image: redis:7.4.5-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis-data:/data]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 10}
+  backend:
+    build: .
+    env_file: [.env]
+    environment:
+      KYC_DATABASE_ENGINE: postgresql
+      KYC_DATABASE_HOST: postgres
+      KYC_CELERY_BROKER_URL: redis://redis:6379/0
+      KYC_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      KYC_TASK_ALWAYS_EAGER: "false"
+      KYC_OBJECT_STORAGE_BACKEND: filesystem
+      KYC_OBJECT_STORAGE_ROOT: /data/private-objects
+    volumes: [private-objects:/data/private-objects, model-data:/app/var/models:ro]
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+  worker:
+    build: .
+    command: ["celery", "-A", "api", "worker", "--loglevel=INFO", "--concurrency=2"]
+    env_file: [.env]
+    environment:
+      KYC_DATABASE_ENGINE: postgresql
+      KYC_DATABASE_HOST: postgres
+      KYC_CELERY_BROKER_URL: redis://redis:6379/0
+      KYC_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      KYC_TASK_ALWAYS_EAGER: "false"
+      KYC_OBJECT_STORAGE_BACKEND: filesystem
+      KYC_OBJECT_STORAGE_ROOT: /data/private-objects
+    volumes: [private-objects:/data/private-objects, model-data:/app/var/models:ro]
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [backend]
+volumes:
+  postgres-data:
+  redis-data:
+  private-objects:
+  model-data:
