@@ -82,10 +82,15 @@ class Command(BaseCommand):
 
     def handle(self, *args: object, **options: object) -> None:
         repository_root = Path(settings.REPOSITORY_ROOT)
-        manifest = Path(
-            options["manifest"] or repository_root / "benchmarks" / "manifest.json"
+        manifest = self._repository_path(
+            options["manifest"] or repository_root / "benchmarks" / "manifest.json",
+            repository_root,
         )
-        baseline = Path(options["baseline"]) if options["baseline"] else None
+        baseline = (
+            self._repository_path(options["baseline"], repository_root)
+            if options["baseline"]
+            else None
+        )
         report = run_benchmark(
             manifest,
             split=str(options["split"]),
@@ -103,5 +108,11 @@ class Command(BaseCommand):
             protected = {manifest.expanduser().resolve(strict=False)}
             if baseline is not None:
                 protected.add(baseline.expanduser().resolve(strict=False))
-            _write_report(Path(options["output"]), report_text, protected)
+            output = self._repository_path(options["output"], repository_root)
+            _write_report(output, report_text, protected)
         self.stdout.write(report_text)
+
+    @staticmethod
+    def _repository_path(value: object, repository_root: Path) -> Path:
+        path = Path(str(value)).expanduser()
+        return path if path.is_absolute() else repository_root / path
