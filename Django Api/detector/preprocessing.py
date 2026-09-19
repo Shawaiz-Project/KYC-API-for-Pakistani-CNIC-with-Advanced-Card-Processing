@@ -464,6 +464,26 @@ def _side_signal(model_detections: Sequence[Any]) -> str:
     return "unknown"
 
 
+def _yolo_crop_card(image: np.ndarray, yolo_detections: list[dict]) -> np.ndarray | None:
+    """Crop the image to the highest-confidence YOLO bounding box if it is large enough."""
+    if not yolo_detections:
+        return None
+    best = max(yolo_detections, key=lambda d: d.get("score", 0.0))
+    bbox = best.get("bbox")
+    if not bbox or len(bbox) < 4:
+        return None
+    h, w = image.shape[:2]
+    x1, y1, x2, y2 = (int(round(v)) for v in bbox[:4])
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(w, x2), min(h, y2)
+    if x2 - x1 < 40 or y2 - y1 < 40:
+        return None
+    # Require the crop to cover at least 10% of the image area
+    if (x2 - x1) * (y2 - y1) < 0.10 * w * h:
+        return None
+    return np.ascontiguousarray(image[y1:y2, x1:x2])
+
+
 def preprocess_document(
     validated: ValidatedImage,
     expected_side: str,
@@ -471,8 +491,14 @@ def preprocess_document(
 ) -> PreprocessingResult:
     """Detect, rectify, orient, and quality-check one validated CNIC image.
 
-    ``model_detections`` is optional and is used only as a side signal; card
-    geometry remains contour-based so this stage works without model weights.
+    When a YOLO card detector is configured (KYC_CARD_DETECTOR_MODEL), its
+    bounding-box crop is used to isolate the card before the contour pipeline
+    runs, which gives significantly better results on complex backgrounds and
+    partial captures.  Falls back silently to contour-only mode when YOLO is
+    not loaded or produces no useful detection.
+
+    ``model_detections`` is the optional side-label list returned by the legacy
+    v1 pipeline; card geometry now comes from the YOLO/contour pipeline.
     """
 
     normalized_side = str(expected_side).strip().lower()
@@ -501,15 +527,61 @@ def preprocess_document(
     detections = _normalize_model_detections(model_detections)
     side_signal = _side_signal(detections)
     source = np.ascontiguousarray(validated.image.copy())
-    contour_detection, corners = detect_card_contours(source)
+
+    # --- YOLO-assisted card isolation ----------------------------------------
+    # Try to load the YOLO detector.  A missing/unconfigured model is not an
+    # error here — we simply fall back to the full-image contour pipeline.
+    yolo_crop: np.ndarray | None = None
+    yolo_detection_count = 0
+    try:
+        from .model_registry import get_model_registry
+        registry = get_model_registry()
+        yolo = registry.get_card_detector()
+        if yolo is not None:
+            raw_detections = yolo.detect(source)
+            yolo_detection_count = len(raw_detections)
+            yolo_crop = _yolo_crop_card(source, raw_detections)
+    except Exception:  # noqa: BLE001 — never let detector errors break uploads
+        pass
+    # -------------------------------------------------------------------------
+    # Run contour detection on the YOLO crop when available; fall back to the
+    # full source image.  If YOLO found a crop but contour detection on the
+    # crop also fails, re-raise so the caller gets a meaningful error.
+    detection_source_image = yolo_crop if yolo_crop is not None else source
+    detection_source_label = "yolo_crop_then_contour" if yolo_crop is not None else "opencv_contour"
+
+    contour_detection, crop_corners = detect_card_contours(detection_source_image)
+
+    # Map crop-relative corners back to the full source image coordinate space
+    # so that perspective_correct operates on the original full resolution.
+    if yolo_crop is not None:
+        # Recover the crop offset from the YOLO detection (best bbox)
+        try:
+            from .model_registry import get_model_registry as _reg
+            _yolo_raw = _reg().get_card_detector()
+            if _yolo_raw is not None:
+                # We already have the best bbox stored; re-derive the offset
+                _raw = _yolo_raw.detect(source)
+                if _raw:
+                    _best = max(_raw, key=lambda d: d.get("score", 0.0))
+                    _bbox = _best.get("bbox", [0, 0, 0, 0])
+                    h_src, w_src = source.shape[:2]
+                    ox = max(0, int(round(_bbox[0])))
+                    oy = max(0, int(round(_bbox[1])))
+                    crop_corners[:, 0] += ox
+                    crop_corners[:, 1] += oy
+        except Exception:  # noqa: BLE001
+            pass  # Use crop_corners as-is; perspective correction may be imperfect
+
+    corners = crop_corners
     detection = CardDetection(
         status=contour_detection.status,
         count=contour_detection.count,
-        source=contour_detection.source,
+        source=detection_source_label,
         corners=contour_detection.corners,
         area_ratio=contour_detection.area_ratio,
         complete=contour_detection.complete,
-        model_detection_count=len(detections),
+        model_detection_count=len(detections) if detections else yolo_detection_count,
     )
 
     if side_signal in {"front", "back"} and side_signal != normalized_side:

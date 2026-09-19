@@ -46,6 +46,8 @@ class ValidatedImage:
     exif_transposed: bool
     exif_rotation_degrees: int
     exif_mirrored: bool
+    frame_count: int
+    transparency_composited: bool
 
     @property
     def bgr_image(self) -> np.ndarray:
@@ -71,6 +73,8 @@ class ValidatedImage:
             "exif_transposed": self.exif_transposed,
             "exif_rotation_degrees": self.exif_rotation_degrees,
             "exif_mirrored": self.exif_mirrored,
+            "frame_count": self.frame_count,
+            "transparency_composited": self.transparency_composited,
         }
 
 
@@ -197,6 +201,7 @@ def _decode_with_pillow(data: bytes, *, side: str) -> tuple[np.ndarray, dict[str
             with Image.open(BytesIO(data)) as probe:
                 actual_format = (probe.format or "").upper()
                 encoded_width, encoded_height = probe.size
+                frame_count = int(getattr(probe, "n_frames", 1))
                 _check_dimensions(encoded_width, encoded_height, side=side)
                 if actual_format not in SUPPORTED_IMAGE_FORMATS:
                     display_format = actual_format or "unknown"
@@ -208,13 +213,28 @@ def _decode_with_pillow(data: bytes, *, side: str) -> tuple[np.ndarray, dict[str
                         detected_format=display_format,
                         supported_formats=sorted(SUPPORTED_IMAGE_FORMATS),
                     )
+                if frame_count != 1:
+                    raise _upload_error(
+                        "animated_image_not_supported",
+                        "Animated or multi-frame document images are not supported.",
+                        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                        side,
+                        frame_count=frame_count,
+                    )
                 probe.verify()
 
             with Image.open(BytesIO(data)) as decoded:
                 exif_orientation = int(decoded.getexif().get(_EXIF_ORIENTATION_TAG, 1))
                 corrected = ImageOps.exif_transpose(decoded)
                 corrected.load()
-                rgb = corrected.convert("RGB")
+                rgba = corrected.convert("RGBA")
+                alpha_minimum, alpha_maximum = rgba.getchannel("A").getextrema()
+                transparency_composited = alpha_minimum < 255 or alpha_maximum < 255
+                if transparency_composited:
+                    opaque_background = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+                    rgb = Image.alpha_composite(opaque_background, rgba).convert("RGB")
+                else:
+                    rgb = corrected.convert("RGB")
                 width, height = rgb.size
                 _check_dimensions(width, height, side=side)
                 rgb_array = np.asarray(rgb, dtype=np.uint8).copy()
@@ -248,6 +268,8 @@ def _decode_with_pillow(data: bytes, *, side: str) -> tuple[np.ndarray, dict[str
         "exif_transposed": exif_orientation != 1,
         "exif_rotation_degrees": _EXIF_ROTATION_DEGREES.get(exif_orientation, 0),
         "exif_mirrored": exif_orientation in _MIRRORED_EXIF_ORIENTATIONS,
+        "frame_count": frame_count,
+        "transparency_composited": transparency_composited,
     }
 
 
@@ -285,10 +307,10 @@ def validate_upload(upload: BinaryIO | None, side: str) -> ValidatedImage:
     """
 
     normalized_side = str(side).strip().lower()
-    if normalized_side not in {"front", "back"}:
+    if normalized_side not in {"front", "back", "selfie"}:
         raise KYCError(
             "invalid_document_side",
-            "Document side must be either 'front' or 'back'.",
+            "Document side must be 'front', 'back', or 'selfie'.",
             status.HTTP_400_BAD_REQUEST,
             {"side": normalized_side or None},
         )

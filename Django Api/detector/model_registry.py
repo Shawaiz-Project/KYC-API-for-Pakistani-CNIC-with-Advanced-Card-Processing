@@ -95,6 +95,7 @@ class ModelRegistry:
                 "name": "EasyOCR",
                 "version": _package_version("easyocr", fallback="unavailable"),
                 "languages": list(settings.KYC_OCR_LANGUAGES),
+                "rotation_candidates_degrees": list(settings.KYC_OCR_ROTATION_INFO),
                 "device": settings.KYC_DEVICE,
                 "status": "not_loaded" if settings.KYC_OCR_ENABLED else "disabled",
                 "confidence": "raw_model_score_not_calibrated_probability",
@@ -147,6 +148,7 @@ class ModelRegistry:
                     "name": "EasyOCR",
                     "version": _package_version("easyocr", fallback=getattr(easyocr, "__version__", "unknown")),
                     "languages": list(settings.KYC_OCR_LANGUAGES),
+                    "rotation_candidates_degrees": list(settings.KYC_OCR_ROTATION_INFO),
                     "device": str(getattr(self._ocr_reader, "device", settings.KYC_DEVICE)),
                     "weights": weight_manifest(model_dir),
                     "confidence": "raw_model_score_not_calibrated_probability",
@@ -174,6 +176,7 @@ class ModelRegistry:
             "name": "EasyOCR",
             "version": _package_version("easyocr", fallback="unavailable"),
             "languages": list(settings.KYC_OCR_LANGUAGES),
+            "rotation_candidates_degrees": list(settings.KYC_OCR_ROTATION_INFO),
             "device": settings.KYC_DEVICE,
             "status": "unavailable",
             "reason": error.details["reason"],
@@ -221,10 +224,19 @@ class ModelRegistry:
                 if not path.is_file():
                     raise ModelUnavailableError("card detector", "weight_file_not_found")
                 expected = settings.KYC_CARD_DETECTOR_SHA256
-                if not expected:
-                    raise ModelUnavailableError("card detector", "sha256_not_configured")
                 actual = sha256_file(path)
-                if actual != expected:
+                if not expected:
+                    # SHA256 not configured — allowed when REQUIRED=false (dev/test).
+                    # In production set KYC_CARD_DETECTOR_SHA256 and REQUIRED=true.
+                    if settings.KYC_CARD_DETECTOR_REQUIRED:
+                        raise ModelUnavailableError("card detector", "sha256_not_configured")
+                    import logging as _logging
+                    _logging.getLogger("detector.model_registry").warning(
+                        "YOLO card detector loaded without SHA256 verification. "
+                        "Set KYC_CARD_DETECTOR_SHA256=%s in .env for production.",
+                        actual,
+                    )
+                elif actual != expected:
                     raise ModelUnavailableError("card detector", "sha256_mismatch")
 
                 providers = self._onnx_providers()
