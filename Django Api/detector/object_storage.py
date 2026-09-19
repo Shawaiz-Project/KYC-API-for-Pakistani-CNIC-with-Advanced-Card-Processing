@@ -13,13 +13,18 @@ from .storage import UnsafeStoragePathError, validate_storage_root
 
 
 class PrivateObjectStore:
+    """Abstract interface for private document artifact storage."""
+
     def put(self, organization_id: str, application_id: str, kind: str, content: bytes, content_type: str) -> str:
+        """Store private bytes securely and return a tenant-isolated storage key."""
         raise NotImplementedError
 
     def get(self, key: str) -> bytes:
+        """Retrieve original raw bytes by safe storage key."""
         raise NotImplementedError
 
     def delete(self, key: str) -> None:
+        """Purge stored object bytes from storage backend."""
         raise NotImplementedError
 
 
