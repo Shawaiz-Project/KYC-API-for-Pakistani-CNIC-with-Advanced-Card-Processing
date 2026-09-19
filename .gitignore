@@ -27,5 +27,6 @@ private-data/
 evaluation-data/
 frontend/node_modules/
 frontend/dist/
+frontend/.vite/
 *.tsbuildinfo
 openapi.yml
